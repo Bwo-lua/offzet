@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pointer Map Calc + XOR Tool • Matcha</title>
+    <title>Pointer Map Calc + XOR + Opcode Ref • Matcha</title>
     <style>
+        /* ========== CUSTOM CURSOR GLOBAL OVERRIDE ========== */
         html, body, * {
             cursor: none !important;
         }
@@ -12,7 +13,7 @@
             cursor: none !important;
         }
 
-        /* Theme xanh */
+        /* ========== MATCHA THEME ========== */
         :root {
             --bg: #f4f0e6;
             --card: #ffffff;
@@ -45,11 +46,12 @@
             background: var(--bg);
             color: var(--text);
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
             min-height: 100vh;
             padding: 20px;
             transition: background 0.3s, color 0.3s;
+            gap: 20px;
         }
         .container {
             width: 100%;
@@ -62,7 +64,6 @@
             box-shadow: var(--shadow);
             border: 1px solid var(--border);
             transition: background 0.3s, border 0.3s, box-shadow 0.3s;
-            margin-bottom: 1rem;
         }
         .header {
             display: flex;
@@ -184,7 +185,7 @@
             color: var(--accent);
             letter-spacing: 0.3px;
         }
-        .copy-btn-small {
+        .copy-btn-small, .copy-array-btn {
             background: none;
             border: none;
             color: var(--accent);
@@ -193,8 +194,11 @@
             padding: 4px 8px;
             border-radius: 6px;
             transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
-        .copy-btn-small:hover {
+        .copy-btn-small:hover, .copy-array-btn:hover {
             background: rgba(107, 142, 107, 0.2);
         }
         .error-message {
@@ -208,7 +212,7 @@
             margin: 1.8rem 0 1.4rem;
             opacity: 0.7;
         }
-        .xor-section h3 {
+        .xor-section h3, .opcode-section h3 {
             font-size: 1.1rem;
             margin-bottom: 1rem;
             color: var(--accent);
@@ -238,10 +242,49 @@
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 10px 12px;
-            word-break: break-all;
             margin-top: 8px;
             font-size: 0.95rem;
             color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .xor-result span {
+            word-break: break-all;
+        }
+        /* Opcode Table */
+        .opcode-table-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--input-bg);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        th {
+            background: var(--accent);
+            color: white;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover td {
+            background: rgba(107, 142, 107, 0.08);
         }
         .footer {
             text-align: center;
@@ -250,7 +293,7 @@
             opacity: 0.6;
         }
 
-        /* cursor overlay */
+        /* Canvas cursor overlay */
         #cursor-canvas {
             position: fixed;
             top: 0;
@@ -262,6 +305,7 @@
 </head>
 <body>
     <div class="container">
+        <!-- Card 1: Pointer Map Calculator + XOR Tool -->
         <div class="card">
             <div class="header">
                 <div class="logo">
@@ -314,11 +358,45 @@
                     </div>
                     <button id="xorCalculateBtn" style="height: 44px;">XOR</button>
                 </div>
-                <div class="xor-result" id="xorResultDisplay">Kết quả hiện ở đây</div>
+                <div class="xor-result" id="xorResultContainer">
+                    <span id="xorResultDisplay">Kết quả hiện ở đây</span>
+                    <button class="copy-array-btn" id="copyArrayBtn" title="Copy as C++ Array">📋 Array</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2: Opcode Quick Reference -->
+        <div class="card opcode-section">
+            <h3><span>📖</span> Opcode Quick Reference (x86/x64)</h3>
+            <div class="opcode-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mnemonic</th>
+                            <th>Opcode (hex)</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>NOP</td><td>90</td><td>No Operation</td></tr>
+                        <tr><td>JMP rel32</td><td>E9</td><td>Jump near</td></tr>
+                        <tr><td>JZ / JE rel32</td><td>0F 84</td><td>Jump if zero / equal</td></tr>
+                        <tr><td>JNZ / JNE rel32</td><td>0F 85</td><td>Jump if not zero / not equal</td></tr>
+                        <tr><td>CALL rel32</td><td>E8</td><td>Call near</td></tr>
+                        <tr><td>RET</td><td>C3</td><td>Return near</td></tr>
+                        <tr><td>INT3</td><td>CC</td><td>Breakpoint</td></tr>
+                        <tr><td>PUSH EBP</td><td>55</td><td>Push EBP</td></tr>
+                        <tr><td>MOV EBP, ESP</td><td>8B EC</td><td>Move ESP to EBP</td></tr>
+                        <tr><td>POP EBP</td><td>5D</td><td>Pop EBP</td></tr>
+                        <tr><td>INC EAX</td><td>40</td><td>Increment EAX</td></tr>
+                        <tr><td>DEC EAX</td><td>48</td><td>Decrement EAX</td></tr>
+                        <tr><td>MOV EAX, imm32</td><td>B8</td><td>Move immediate 32‑bit to EAX</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
         <div class="footer">
-            idk make for whut
+            🔍 Dành cho dân đào offset • Không cần máy tính tay • 100% client‑side
         </div>
     </div>
 
@@ -326,7 +404,7 @@
 
     <script>
         (function() {
-            // cuztom ejine cuhsor
+            // ---------- CUSTOM CURSOR ENGINE ----------
             const canvas = document.getElementById('cursor-canvas');
             const ctx = canvas.getContext('2d');
 
@@ -426,7 +504,7 @@
             initCanvas();
             renderCursor();
 
-            // pointer map
+            // ---------- POINTER MAP CALCULATOR LOGIC ----------
             const baseInput = document.getElementById('baseInput');
             const offsetsInput = document.getElementById('offsetsInput');
             const calculateBtn = document.getElementById('calculateBtn');
@@ -490,8 +568,8 @@
                 if (match) {
                     const newBase = match[1];
                     let rest = match[2].replace(/[+]+/g, ' ').replace(/\s+/g, ' ').trim();
-                    baseInput.value = newBase; 
-                    offsetsInput.value = rest; 
+                    baseInput.value = newBase;
+                    offsetsInput.value = rest;
                     return true;
                 }
                 return false;
@@ -505,7 +583,6 @@
                 lastFinal = null;
 
                 try {
-                    // split thong minh nhat trai dat
                     autoSplitIfNeeded();
 
                     const baseStr = baseInput.value.trim();
@@ -585,11 +662,12 @@
                 if (e.key === 'Enter') calculate();
             });
 
-            // Xor lozic
+            // ---------- XOR TOOL LOGIC ----------
             const xorDataInput = document.getElementById('xorDataInput');
             const xorKeyInput = document.getElementById('xorKeyInput');
             const xorCalculateBtn = document.getElementById('xorCalculateBtn');
             const xorResultDisplay = document.getElementById('xorResultDisplay');
+            const copyArrayBtn = document.getElementById('copyArrayBtn');
 
             function hexToBytes(hex) {
                 hex = hex.replace(/\s+/g, '').replace(/^0x/i, '');
@@ -615,20 +693,25 @@
                 return result;
             }
 
+            let lastXorResultBytes = null;
+
             function calculateXor() {
                 try {
                     const dataStr = xorDataInput.value.trim();
                     const keyStr = xorKeyInput.value.trim();
                     if (!dataStr || !keyStr) {
                         xorResultDisplay.textContent = 'Vui lòng nhập cả Data và Key.';
+                        lastXorResultBytes = null;
                         return;
                     }
                     const dataBytes = hexToBytes(dataStr);
                     const keyBytes = hexToBytes(keyStr);
                     const xorResult = xorBytes(dataBytes, keyBytes);
+                    lastXorResultBytes = xorResult;
                     xorResultDisplay.textContent = '0x' + bytesToHex(xorResult).toUpperCase();
                 } catch (e) {
                     xorResultDisplay.textContent = 'Lỗi: ' + e.message;
+                    lastXorResultBytes = null;
                 }
             }
 
@@ -642,6 +725,26 @@
                 if (e.key === 'Enter') calculateXor();
             });
 
+            // Copy as C++ Array
+            copyArrayBtn.addEventListener('click', () => {
+                if (!lastXorResultBytes || lastXorResultBytes.length === 0) {
+                    alert('Chưa có kết quả XOR để copy.');
+                    return;
+                }
+                const byteStrs = lastXorResultBytes.map(b => '0x' + b.toString(16).padStart(2, '0'));
+                const cppArray = `{ ${byteStrs.join(', ')} }`;
+                navigator.clipboard.writeText(cppArray).then(() => {
+                    const original = copyArrayBtn.textContent;
+                    copyArrayBtn.textContent = '✅ OK';
+                    setTimeout(() => {
+                        copyArrayBtn.textContent = original;
+                    }, 1200);
+                }).catch(() => {
+                    alert('Sao chép thất bại.');
+                });
+            });
+
+            // Optional: allow smart split on paste directly
             baseInput.addEventListener('paste', (e) => {
                 setTimeout(() => {
                     if (offsetsInput.value.trim() === '') {
