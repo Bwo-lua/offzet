@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pointer Map Calculator • Matcha Theme</title>
+    <title>Pointer Map Calc + XOR Tool • Matcha</title>
     <style>
-        /* ========== CUSTOM CURSOR GLOBAL OVERRIDE ========== */
         html, body, * {
             cursor: none !important;
         }
@@ -13,7 +12,7 @@
             cursor: none !important;
         }
 
-        /* ========== MATCHA THEME ========== */
+        /* Theme xanh */
         :root {
             --bg: #f4f0e6;
             --card: #ffffff;
@@ -54,7 +53,7 @@
         }
         .container {
             width: 100%;
-            max-width: 600px;
+            max-width: 620px;
         }
         .card {
             background: var(--card);
@@ -63,6 +62,7 @@
             box-shadow: var(--shadow);
             border: 1px solid var(--border);
             transition: background 0.3s, border 0.3s, box-shadow 0.3s;
+            margin-bottom: 1rem;
         }
         .header {
             display: flex;
@@ -203,6 +203,46 @@
             margin-top: 0.3rem;
             display: none;
         }
+        .divider {
+            border-top: 1px solid var(--border);
+            margin: 1.8rem 0 1.4rem;
+            opacity: 0.7;
+        }
+        .xor-section h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .xor-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .xor-input {
+            flex: 1 1 140px;
+        }
+        .xor-input label {
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+        .xor-input input {
+            padding: 10px 12px;
+        }
+        .xor-result {
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            word-break: break-all;
+            margin-top: 8px;
+            font-size: 0.95rem;
+            color: var(--accent);
+        }
         .footer {
             text-align: center;
             margin-top: 1.5rem;
@@ -210,7 +250,7 @@
             opacity: 0.6;
         }
 
-        /* Canvas cursor overlay */
+        /* cursor overlay */
         #cursor-canvas {
             position: fixed;
             top: 0;
@@ -235,6 +275,7 @@
             <div class="input-group">
                 <label>🧷 Base Address (Hex)</label>
                 <input type="text" id="baseInput" placeholder="Ví dụ: 0x7FF7A0000000 hoặc 400000" autocomplete="off">
+                <div class="hint">Bạn có thể dán nguyên cụm "0xBase + 0x10 + 0x20" – công cụ sẽ tự tách.</div>
             </div>
 
             <div class="input-group">
@@ -257,9 +298,27 @@
                 </div>
                 <div class="error-message" id="errorMsg"></div>
             </div>
+
+            <!-- XOR Tool Section -->
+            <div class="divider"></div>
+            <div class="xor-section">
+                <h3><span>🔐</span> XOR Tool (Fixed Key)</h3>
+                <div class="xor-row">
+                    <div class="xor-input">
+                        <label>Hex Data</label>
+                        <input type="text" id="xorDataInput" placeholder="e.g. 48656C6C6F" autocomplete="off">
+                    </div>
+                    <div class="xor-input">
+                        <label>Key (hex)</label>
+                        <input type="text" id="xorKeyInput" placeholder="e.g. 42" autocomplete="off">
+                    </div>
+                    <button id="xorCalculateBtn" style="height: 44px;">XOR</button>
+                </div>
+                <div class="xor-result" id="xorResultDisplay">Kết quả hiện ở đây</div>
+            </div>
         </div>
         <div class="footer">
-            🔍 Dành cho dân đào offset • Không cần máy tính tay • 100% client‑side
+            idk make for whut
         </div>
     </div>
 
@@ -267,7 +326,7 @@
 
     <script>
         (function() {
-            // ---------- CUSTOM CURSOR ENGINE ----------
+            // cuztom ejine cuhsor
             const canvas = document.getElementById('cursor-canvas');
             const ctx = canvas.getContext('2d');
 
@@ -319,7 +378,6 @@
                 ctx.shadowColor = 'rgba(255, 255, 255, 0.2)';
 
                 if (isTextMode) {
-                    // Custom I-beam (curved wings)
                     ctx.strokeStyle = '#ffffff';
                     ctx.lineWidth = 1.3;
                     ctx.lineCap = 'round';
@@ -343,7 +401,6 @@
                     ctx.lineWidth = 0.5;
                     ctx.stroke();
                 } else {
-                    // Tilted shard
                     ctx.rotate((tilt - 22.5) * (Math.PI / 180)); 
 
                     ctx.beginPath();
@@ -369,7 +426,7 @@
             initCanvas();
             renderCursor();
 
-            // ---------- POINTER MAP CALCULATOR LOGIC ----------
+            // pointer map
             const baseInput = document.getElementById('baseInput');
             const offsetsInput = document.getElementById('offsetsInput');
             const calculateBtn = document.getElementById('calculateBtn');
@@ -423,6 +480,23 @@
                 return tokens.filter(t => t !== '').map(t => parseHex(t));
             }
 
+            function autoSplitIfNeeded() {
+                const rawBase = baseInput.value.trim();
+                if (offsetsInput.value.trim() !== '') return false;
+
+                const hexToken = '0x[0-9a-fA-F]+|[0-9a-fA-F]+';
+                const regex = new RegExp(`^\\s*(${hexToken})\\s*[\\s+]+\\s*(${hexToken}([\\s+]+${hexToken})*)\\s*$`);
+                const match = rawBase.match(regex);
+                if (match) {
+                    const newBase = match[1];
+                    let rest = match[2].replace(/[+]+/g, ' ').replace(/\s+/g, ' ').trim();
+                    baseInput.value = newBase; 
+                    offsetsInput.value = rest; 
+                    return true;
+                }
+                return false;
+            }
+
             function calculate() {
                 errorMsg.style.display = 'none';
                 finalAddressDisplay.textContent = '—';
@@ -431,6 +505,9 @@
                 lastFinal = null;
 
                 try {
+                    // split thong minh nhat trai dat
+                    autoSplitIfNeeded();
+
                     const baseStr = baseInput.value.trim();
                     if (!baseStr) throw new Error('Vui lòng nhập Base Address.');
 
@@ -506,6 +583,71 @@
             });
             offsetsInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') calculate();
+            });
+
+            // Xor lozic
+            const xorDataInput = document.getElementById('xorDataInput');
+            const xorKeyInput = document.getElementById('xorKeyInput');
+            const xorCalculateBtn = document.getElementById('xorCalculateBtn');
+            const xorResultDisplay = document.getElementById('xorResultDisplay');
+
+            function hexToBytes(hex) {
+                hex = hex.replace(/\s+/g, '').replace(/^0x/i, '');
+                if (hex.length % 2 !== 0) {
+                    throw new Error('Chuỗi hex phải có độ dài chẵn.');
+                }
+                const bytes = [];
+                for (let i = 0; i < hex.length; i += 2) {
+                    bytes.push(parseInt(hex.substr(i, 2), 16));
+                }
+                return bytes;
+            }
+
+            function bytesToHex(bytes) {
+                return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+
+            function xorBytes(dataBytes, keyBytes) {
+                const result = [];
+                for (let i = 0; i < dataBytes.length; i++) {
+                    result.push(dataBytes[i] ^ keyBytes[i % keyBytes.length]);
+                }
+                return result;
+            }
+
+            function calculateXor() {
+                try {
+                    const dataStr = xorDataInput.value.trim();
+                    const keyStr = xorKeyInput.value.trim();
+                    if (!dataStr || !keyStr) {
+                        xorResultDisplay.textContent = 'Vui lòng nhập cả Data và Key.';
+                        return;
+                    }
+                    const dataBytes = hexToBytes(dataStr);
+                    const keyBytes = hexToBytes(keyStr);
+                    const xorResult = xorBytes(dataBytes, keyBytes);
+                    xorResultDisplay.textContent = '0x' + bytesToHex(xorResult).toUpperCase();
+                } catch (e) {
+                    xorResultDisplay.textContent = 'Lỗi: ' + e.message;
+                }
+            }
+
+            xorCalculateBtn.addEventListener('click', calculateXor);
+            xorDataInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    xorKeyInput.focus();
+                }
+            });
+            xorKeyInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') calculateXor();
+            });
+
+            baseInput.addEventListener('paste', (e) => {
+                setTimeout(() => {
+                    if (offsetsInput.value.trim() === '') {
+                        autoSplitIfNeeded();
+                    }
+                }, 10);
             });
         })();
     </script>
